@@ -89,3 +89,12 @@ coverage/
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+
+
+
+# Custom ignore rules
+fonts/
+Reference Data/
+flutter_01.png 
+project_structure.md    
+project_structure.txt
