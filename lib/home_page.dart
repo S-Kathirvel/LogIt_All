@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app1/app1_home.dart'; // Importing App1's home page
+import 'StreakHabitTracker/Habits_page.dart'; // Importing App1's home page
 
 class HomePage extends StatelessWidget {
   @override
@@ -30,7 +30,7 @@ class HomePage extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => App1Home()),
+                MaterialPageRoute(builder: (context) => HabitsPage()),
               );
             },
           ),
