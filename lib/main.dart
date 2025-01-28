@@ -1,21 +1,27 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart'; // Importing the home page
+import 'home_page.dart';
+import 'WatchedMovieLog/database.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  final database = MovieDatabase();
+  database.addDummyData(); 
+  runApp(MyApp(movieDatabase: database));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final MovieDatabase movieDatabase;
+
+  MyApp({required this.movieDatabase, Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Kv\'s Utility Apps',
+      title: 'Watched Movies Log',
       theme: ThemeData(
-        brightness: Brightness.dark, // Set the app to dark mode
+        brightness: Brightness.dark,
       ),
-      home: HomePage(), // Set HomePage as the initial screen
+      home: ShowMoviesPage(database: movieDatabase),
     );
   }
 }

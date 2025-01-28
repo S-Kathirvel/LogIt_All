@@ -156,3 +156,8 @@ class _HabitsPageState extends State<HabitsPage> {
     );
   }
 }
+
+void main() {
+  // The Streak Habit Tracker is currently disabled for debugging purposes.
+  // runApp(StreakHabitTrackerApp());
+}

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'StreakHabitTracker/Habits_page.dart'; // Importing App1's home page
+import 'StreakHabitTracker/Habits_page.dart';
+import 'WatchedMovieLog/show_movies_page.dart';
+import 'WatchedMovieLog/database.dart';
 
 class HomePage extends StatelessWidget {
+  final MovieDatabase movieDatabase;
+
+  HomePage({Key? key, required this.movieDatabase}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,7 +53,12 @@ class HomePage extends StatelessWidget {
             emoji: '🎬',
             title: 'Watched Movies Log',
             onTap: () {
-              _showComingSoonDialog(context, 'Watched Movies Log');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShowMoviesPage(database: movieDatabase),
+                ),
+              );
             },
           ),
         ],
