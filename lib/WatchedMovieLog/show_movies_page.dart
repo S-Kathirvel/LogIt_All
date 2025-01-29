@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'database.dart';
 import 'add_movie_page.dart';
-import 'settings_page.dart';
-import 'edit_database_page.dart';
 
 class ShowMoviesPage extends StatefulWidget {
   final MovieDatabase database;
@@ -14,69 +12,151 @@ class ShowMoviesPage extends StatefulWidget {
 }
 
 class _ShowMoviesPageState extends State<ShowMoviesPage> {
-  Future<List<Movie>>? _future;
+  late Future<List<Map<String, dynamic>>> _moviesFuture;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.database.getMovies();
+    _refreshMovies();
   }
 
-  void refreshMovies() {
+  Future<void> _refreshMovies() async {
     setState(() {
-      _future = widget.database.getMovies(); // Refresh the movie list
+      _isLoading = true;
+      _moviesFuture = widget.database.getAllMovies();
     });
+
+    try {
+      await _moviesFuture;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading movies: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _navigateToAddMovie() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddMoviePage(database: widget.database),
+      ),
+    );
+
+    if (result == true) {
+      _refreshMovies();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Watched Movies')), 
-      body: FutureBuilder<List<Movie>>(
-        future: _future, 
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          final movies = snapshot.data;
-          return ListView.builder(
-            itemCount: movies!.length,
-            itemBuilder: (context, index) {
-              return ListTile(
-                title: Text(movies[index].name),
-                subtitle: Text('Released: ${movies[index].yearOfRelease} | Rating: ${movies[index].rating} | Genres: ${movies[index].genres.join(', ')}'),
-              );
-            },
-          );
-        },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Add Movie',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+      appBar: AppBar(
+        title: Text('Watched Movies'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _isLoading ? null : _refreshMovies,
           ),
         ],
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AddMoviePage(database: widget.database, refreshMovies: refreshMovies)),
-            );
-          } else if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SettingsPage(database: widget.database)),
-            );
-          }
-        },
+      ),
+      body: Stack(
+        children: [
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: _moviesFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !_isLoading) {
+                return Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      SizedBox(height: 16),
+                      Text(
+                        'Error loading movies',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: _refreshMovies,
+                        child: Text('Try Again'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final movies = snapshot.data ?? [];
+
+              if (movies.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.movie_outlined, size: 48),
+                      SizedBox(height: 16),
+                      Text(
+                        'No movies added yet',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: _navigateToAddMovie,
+                        child: Text('Add Your First Movie'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return RefreshIndicator(
+                onRefresh: _refreshMovies,
+                child: ListView.builder(
+                  itemCount: movies.length,
+                  itemBuilder: (context, index) {
+                    final movie = movies[index];
+                    return Card(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: ListTile(
+                        title: Text(movie['name'] ?? ''),
+                        subtitle: Text(
+                          '${movie['year']} • ${movie['genre']}\nRating: ${movie['rating'].toStringAsFixed(1)}/5.0',
+                        ),
+                        isThreeLine: true,
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          if (_isLoading)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _isLoading ? null : _navigateToAddMovie,
+        child: Icon(Icons.add),
+        tooltip: 'Add Movie',
       ),
     );
   }

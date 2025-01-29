@@ -3,9 +3,8 @@ import 'database.dart';
 
 class AddMoviePage extends StatefulWidget {
   final MovieDatabase database;
-  final Function refreshMovies;
 
-  AddMoviePage({required this.database, required this.refreshMovies});
+  AddMoviePage({required this.database});
 
   @override
   _AddMoviePageState createState() => _AddMoviePageState();
@@ -13,119 +12,169 @@ class AddMoviePage extends StatefulWidget {
 
 class _AddMoviePageState extends State<AddMoviePage> {
   final _formKey = GlobalKey<FormState>();
-  String _name = '';
-  int _year = 2023;
-  List<String> _genres = [];
-  DateTime _dateWatched = DateTime.now();
-  double _rating = 0;
+  final _nameController = TextEditingController();
+  final _yearController = TextEditingController();
+  final _genreController = TextEditingController();
+  double _rating = 3.0;
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _yearController.dispose();
+    _genreController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveMovie() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final movie = {
+        'name': _nameController.text,
+        'year': int.parse(_yearController.text),
+        'genre': _genreController.text,
+        'rating': _rating,
+        'date_of_entry': DateTime.now().toIso8601String(),
+      };
+
+      await widget.database.addMovie(movie);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Movie added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Pass true to indicate success
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add movie: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Add Movie')), 
-      body: Form(
-        key: _formKey,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: <Widget>[
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Movie Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a movie name';
-                  }
-                  return null;
-                },
-                onChanged: (value) {
-                  setState(() {
-                    _name = value;
-                  });
-                },
-              ),
-              TextFormField(
-                decoration: InputDecoration(labelText: 'Year of Release'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  setState(() {
-                    _year = int.parse(value);
-                  });
-                },
-              ),
-              // Genres selection
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Select Genres'),
-                items: <String>[
-                  'Action', 'Adult', 'Adventure', 'Animation', 'Biography', 'Comedy',
-                  'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'Film Noir',
-                  'Game Show', 'History', 'Horror', 'Musical', 'Music', 'Mystery',
-                  'News', 'Reality-TV', 'Romance', 'Sci-Fi', 'Short', 'Sport',
-                  'Talk-Show', 'Thriller', 'War', 'Western'
-                ]
-                .map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    if (value != null) {
-                      if (!_genres.contains(value)) {
-                        _genres.add(value);
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isSaving) return false;
+        Navigator.pop(context, false); // Pass false to indicate no changes
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Add New Movie'),
+          leading: _isSaving
+              ? null
+              : IconButton(
+                  icon: Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+        ),
+        body: Stack(
+          children: [
+            Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.all(16.0),
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Movie Name',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the movie name';
                       }
-                    }
-                  });
-                },
+                      return null;
+                    },
+                    enabled: !_isSaving,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _yearController,
+                    decoration: InputDecoration(
+                      labelText: 'Release Year',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the release year';
+                      }
+                      final year = int.tryParse(value);
+                      if (year == null || year < 1888 || year > DateTime.now().year) {
+                        return 'Please enter a valid year';
+                      }
+                      return null;
+                    },
+                    enabled: !_isSaving,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _genreController,
+                    decoration: InputDecoration(
+                      labelText: 'Genre',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter the genre';
+                      }
+                      return null;
+                    },
+                    enabled: !_isSaving,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Rating: ${_rating.toStringAsFixed(1)}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Slider(
+                    value: _rating,
+                    min: 0,
+                    max: 5,
+                    divisions: 10,
+                    label: _rating.toStringAsFixed(1),
+                    onChanged: _isSaving ? null : (value) {
+                      setState(() => _rating = value);
+                    },
+                  ),
+                  SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: _isSaving ? null : _saveMovie,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(_isSaving ? 'Saving...' : 'Save Movie'),
+                    ),
+                  ),
+                ],
               ),
-              // Date picker
-              TextButton(
-                onPressed: () async {
-                  final DateTime? picked = await showDatePicker(
-                    context: context,
-                    initialDate: _dateWatched,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2101),
-                  );
-                  if (picked != null && picked != _dateWatched)
-                    setState(() {
-                      _dateWatched = picked;
-                    });
-                },
-                child: Text('Select Date Watched: ${_dateWatched.toLocal()}'.split(' ')[0]),
+            ),
+            if (_isSaving)
+              Container(
+                color: Colors.black54,
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
               ),
-              // Rating input
-              Slider(
-                value: _rating,
-                min: 0,
-                max: 10,
-                divisions: 10,
-                label: _rating.round().toString(),
-                onChanged: (double value) {
-                  setState(() {
-                    _rating = value;
-                  });
-                },
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    // Save movie to database
-                    widget.database.addMovie(Movie(
-                      name: _name,
-                      yearOfRelease: _year,
-                      genres: _genres,
-                      dateWatched: _dateWatched,
-                      rating: _rating,
-                    ));
-                    widget.refreshMovies(); // Call refreshMovies callback
-                    Navigator.pop(context); // Navigate back to Show Movies Page
-                  }
-                },
-                child: Text('Add Movie'),
-              ),
-            ],
-          ),
+          ],
         ),
       ),
     );
