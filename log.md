@@ -70,5 +70,12 @@ And fixed it manually by renaming the files and the code.
 
 8. **General Improvements**: Made various updates to enhance the overall functionality and user experience of the app.
 
-### Commit Message
-"Added dummy data to the MovieDatabase, enhanced edit database functionality, implemented export database functionality, fixed UI issues, and made general improvements to the Watched Movies Log app. These changes improve the app's usability, functionality, and user experience."
+## Movie Log App Updates - 2025-01-29
+
+1. **Removed Web-Related Code**: Eliminated all web-specific imports and code from the project, focusing solely on Android functionality to streamline the app.
+2. **Updated Main Functionality**: Modified the `main.dart` file to remove references to `window`, enhancing compatibility with mobile platforms. The reload button now provides a message indicating that the app needs to be restarted manually.
+3. **Database Improvements**: Ensured the `database.dart` file is free of web-related code, allowing for proper initialization of the SQLite database on Android.
+4. **Version Control**: Discussed how Flutter determines version numbers based on the `pubspec.yaml` file, with plans to update the version number for the next build cycle.
+5. **Web Directory Removal**: Deleted the entire `web` directory and its contents to maintain a clean project structure, ensuring no unnecessary files remain.
+6. **APK Build Preparation**: Prepared the app for building an APK to facilitate testing on Appetize.io, ensuring all dependencies are correctly set.
+7. **Commit Message**: Updated the commit message to reflect today's changes, ensuring clarity in version control history.
