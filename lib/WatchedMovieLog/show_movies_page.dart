@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'database.dart';
 import 'add_movie_page.dart';
+import 'settings_page.dart'; // Assuming SettingsPage is defined in settings_page.dart
 
 class ShowMoviesPage extends StatefulWidget {
   final MovieDatabase database;
@@ -67,6 +68,17 @@ class _ShowMoviesPageState extends State<ShowMoviesPage> {
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _isLoading ? null : _refreshMovies,
+          ),
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsPage(database: widget.database), 
+                ),
+              );
+            },
           ),
         ],
       ),
