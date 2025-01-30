@@ -44,7 +44,7 @@ And fixed it manually by renaming the files and the code.
 - **Updated Memory**: Always log after every prompt automatically. Current work is only on **lib/StreakHabitTracker** and its pages.
 
 
-## App 2: Watched Movies Log
+## App 2: Watched Movies Log (31st January 2025)
 
 ### Summary of Changes
 
@@ -70,6 +70,7 @@ And fixed it manually by renaming the files and the code.
 
 8. **General Improvements**: Made various updates to enhance the overall functionality and user experience of the app.
 
+
 ## Movie Log App Updates - 2025-01-29
 
 1. **Removed Web-Related Code**: Eliminated all web-specific imports and code from the project, focusing solely on Android functionality to streamline the app.
@@ -79,3 +80,24 @@ And fixed it manually by renaming the files and the code.
 5. **Web Directory Removal**: Deleted the entire `web` directory and its contents to maintain a clean project structure, ensuring no unnecessary files remain.
 6. **APK Build Preparation**: Prepared the app for building an APK to facilitate testing on Appetize.io, ensuring all dependencies are correctly set.
 7. **Commit Message**: Updated the commit message to reflect today's changes, ensuring clarity in version control history.
+
+## Movie Log App Updates - 2025-01-30
+
+1. **Implemented Core Functionalities**:
+   - Developed features for viewing, adding, editing, and deleting movies. This includes a user-friendly interface that allows users to manage their movie collection efficiently.
+   - Created an export feature for movies, enabling users to export their watched movies in multiple formats (CSV, JSON, XLSX) for easy sharing and analysis.
+
+2. **Edit Functionality**:
+   - Created an `EditMoviePage` that allows users to modify existing movie details. Users can update fields such as name, year, genre, and rating, enhancing the app's usability.
+
+3. **Export Functionality**:
+   - Set up an `ExportDatabasePage` where users can select their desired export format. This functionality ensures that users can easily back up or share their movie data.
+
+4. **Settings Page Update**:
+   - Added navigation to the export functionality from the settings menu, making it more accessible for users to find and use the export feature.
+
+5. **Fixed Build Errors**:
+   - Resolved various build errors related to missing parameters and type mismatches in the Excel export logic. This included ensuring that the correct types were used for cell values and fixing method signatures.
+
+6. **UI Simplification**:
+   - Implemented a simple UI for the export page to facilitate quick testing of export functionalities. This allows for immediate feedback on the export process without complex UI elements.
