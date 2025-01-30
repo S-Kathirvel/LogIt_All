@@ -70,14 +70,7 @@ class _EditDatabasePageState extends State<EditDatabasePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Movies'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _refreshMovies,
-            tooltip: 'Refresh List',
-          ),
-        ],
+        title: Text('Edit Database'),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _moviesFuture,
@@ -86,92 +79,42 @@ class _EditDatabasePageState extends State<EditDatabasePage> {
             return Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text(
-                    'Error loading movies',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  Text(
-                    '${snapshot.error}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-            );
+            return Center(child: Text('Error loading movies')); 
           }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.movie_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    'No movies to edit',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final movies = snapshot.data!;
+          final movies = snapshot.data;
           return ListView.builder(
-            itemCount: movies.length,
+            itemCount: movies!.length,
             itemBuilder: (context, index) {
               final movie = movies[index];
-              return Dismissible(
-                key: Key(movie['id'].toString()),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Icon(Icons.delete, color: Colors.white),
-                ),
-                confirmDismiss: (direction) async {
-                  return _deleteMovie(context, movie['id'], movie['name']);
-                },
-                child: Card(
-                  margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: ListTile(
-                    title: Text(
-                      movie['name'],
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(height: 4),
-                        Text('Year: ${movie['year']}'),
-                        Text('Genre: ${movie['genre']}'),
-                        Text('Rating: ${movie['rating'].toStringAsFixed(1)} ⭐'),
-                      ],
-                    ),
-                    trailing: IconButton(
+              return ListTile(
+                title: Text(movie['name']),
+                subtitle: Text('Year: ${movie['year']}, Genre: ${movie['genre']}, Rating: ${movie['rating'].toStringAsFixed(1)} ⭐'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
                       icon: Icon(Icons.edit),
                       onPressed: () async {
-                        final edited = await Navigator.push(
+                        final editedMovie = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => EditMoviePage(
-                              movie: movie,
-                              database: widget.database,
-                            ),
+                            builder: (context) => EditMoviePage(movie: movie, database: widget.database),
                           ),
                         );
-                        if (edited == true) {
+                        if (editedMovie != null) {
+                          // Update the movie in the database
+                          await widget.database.updateMovie(editedMovie['id'], editedMovie);
                           _refreshMovies();
                         }
                       },
                     ),
-                    isThreeLine: true,
-                  ),
+                    IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed: () {
+                        _deleteMovie(context, movie['id'], movie['name']);
+                      },
+                    ),
+                  ],
                 ),
               );
             },
@@ -348,6 +291,7 @@ class _EditMoviePageState extends State<EditMoviePage> {
       }
 
       final movie = {
+        'id': widget.movie['id'],
         'name': _nameController.text,
         'year': int.parse(_yearController.text),
         'genre': _selectedGenres.join(', '),
@@ -356,8 +300,8 @@ class _EditMoviePageState extends State<EditMoviePage> {
       };
 
       try {
-        await widget.database.updateMovie(widget.movie['id'], movie);
-        Navigator.pop(context, true);
+        await widget.database.updateMovie(movie['id'], movie);
+        Navigator.pop(context, movie);
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error updating movie: $e')),
