@@ -6,6 +6,7 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
 import 'database.dart';
 import 'edit_database_page.dart';
+import 'export_database_page.dart'; // Add this line
 
 class SettingsPage extends StatefulWidget {
   final MovieDatabase database;
@@ -100,23 +101,24 @@ class _SettingsPageState extends State<SettingsPage> {
     final excel = Excel.createExcel();
     final sheet = excel['Movies'];
 
-    // Add header
-    sheet.appendRow(['Name', 'Year', 'Genre', 'Rating', 'Date Added']);
+    final headers = ['Name', 'Year', 'Genre', 'Rating', 'Date Added'].map((e) => TextCellValue(e)).toList();
+    sheet.appendRow(headers);
 
-    // Add data
+    // Add data rows
     for (var movie in movies) {
-      sheet.appendRow([
-        movie['name'],
-        movie['year'],
-        movie['genre'],
-        movie['rating'],
-        movie['date_of_entry'],
-      ]);
+      final row = [
+        TextCellValue(movie['name']),
+        TextCellValue(movie['year'].toString()),
+        TextCellValue(movie['genre']),
+        TextCellValue(movie['rating'].toString()),
+        TextCellValue(movie['date_of_entry'] ?? ''),
+      ];
+      sheet.appendRow(row);
     }
 
-    // Auto-fit columns
-    for (var col in sheet.columns) {
-      sheet.setColAutoFit(col);
+    // Set column widths
+    for (var i = 0; i < headers.length; i++) {
+      sheet.setColumnWidth(i, 15.0);
     }
 
     final file = File(filePath);
@@ -224,7 +226,28 @@ class _SettingsPageState extends State<SettingsPage> {
                     );
                   },
                 ),
-                Divider(),
+                ListTile(
+                  title: Text('Export Database'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ExportDatabasePage(database: widget.database),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  title: Text('Export Database'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ExportDatabasePage(database: widget.database),
+                      ),
+                    );
+                  },
+                ),
                 ListTile(
                   leading: Icon(Icons.upload_file),
                   title: Text('Export Database'),
