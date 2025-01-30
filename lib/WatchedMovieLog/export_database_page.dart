@@ -5,6 +5,7 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'database.dart';
 
 class ExportDatabasePage extends StatefulWidget {
@@ -53,6 +54,8 @@ class _ExportDatabasePageState extends State<ExportDatabasePage> {
 
       if (format == 'csv') {
         await _exportToCsv(movies, filePath);
+      } else if (format == 'json') {
+        await _exportToJson(movies, filePath);
       } else {
         await _exportToExcel(movies, filePath);
       }
@@ -61,26 +64,10 @@ class _ExportDatabasePageState extends State<ExportDatabasePage> {
         _lastExportPath = filePath;
         _errorMessage = null;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Successfully exported to $filePath'),
-          duration: Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'OPEN',
-            onPressed: () {
-              // TODO: Implement file opening functionality
-            },
-          ),
-        ),
-      );
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
-      );
     } finally {
       setState(() {
         _isExporting = false;
@@ -105,43 +92,46 @@ class _ExportDatabasePageState extends State<ExportDatabasePage> {
     await file.writeAsString(csvString);
   }
 
+  Future<void> _exportToJson(List<Map<String, dynamic>> movies, String filePath) async {
+    final jsonString = jsonEncode(movies);
+    final file = File(filePath);
+    await file.writeAsString(jsonString);
+  }
+
   Future<void> _exportToExcel(List<Map<String, dynamic>> movies, String filePath) async {
     final excel = Excel.createExcel();
     final sheet = excel['Movies'];
 
-    // Add header with style
-    final headerStyle = CellStyle(
-      bold: true,
-      backgroundColorHex: '#CCCCCC',
-      horizontalAlign: HorizontalAlign.Center,
-    );
-
+    // Add headers with style
     final headers = ['Name', 'Year', 'Genre', 'Rating', 'Date Added'];
     for (var i = 0; i < headers.length; i++) {
-      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
-        ..value = headers[i]
-        ..cellStyle = headerStyle;
+      final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0));
+      cell.value = TextCellValue(headers[i]);
+      cell.cellStyle = CellStyle(
+        bold: true,
+      );
     }
 
     // Add data
     for (var i = 0; i < movies.length; i++) {
       final movie = movies[i];
       final row = i + 1;
+      
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: row))
-        ..value = movie['name'];
+        .value = TextCellValue(movie['name']);
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: row))
-        ..value = movie['year'];
+        .value = TextCellValue(movie['year'].toString());
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: row))
-        ..value = movie['genre'];
+        .value = TextCellValue(movie['genre']);
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: row))
-        ..value = movie['rating'];
+        .value = TextCellValue(movie['rating'].toString());
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: row))
-        ..value = movie['date_of_entry'];
+        .value = TextCellValue(movie['dateAdded'] ?? '');
     }
 
-    // Auto-fit columns
-    for (var col in sheet.columns) {
-      sheet.setColAutoFit(col);
+    // Set column widths
+    for (var i = 0; i < headers.length; i++) {
+      sheet.setColumnWidth(i, 15.0);
     }
 
     final file = File(filePath);
@@ -152,116 +142,30 @@ class _ExportDatabasePageState extends State<ExportDatabasePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Export Database'),
-        actions: [
-          if (_isExporting)
-            Padding(
-              padding: EdgeInsets.only(right: 16.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-        ],
+        title: Text('Export Movies'),
       ),
       body: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Export Options',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Choose a format to export your movie database:',
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
-                    SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(Icons.description),
-                            label: Text('Export as CSV'),
-                            onPressed: _isExporting ? null : () => _exportToFile('csv'),
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: Icon(Icons.table_chart),
-                            label: Text('Export as Excel'),
-                            onPressed: _isExporting ? null : () => _exportToFile('xlsx'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            ElevatedButton(
+              onPressed: () => _exportToFile('csv'),
+              child: Text('Export as CSV'),
             ),
+            ElevatedButton(
+              onPressed: () => _exportToFile('json'),
+              child: Text('Export as JSON'),
+            ),
+            ElevatedButton(
+              onPressed: () => _exportToFile('xlsx'),
+              child: Text('Export as XLSX'),
+            ),
+            if (_isExporting)
+              CircularProgressIndicator(),
             if (_errorMessage != null)
-              Card(
-                color: Theme.of(context).colorScheme.errorContainer,
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer),
-                  ),
-                ),
-              ),
+              Text(_errorMessage!, style: TextStyle(color: Colors.red)),
             if (_lastExportPath != null)
-              Card(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Last Export',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      SizedBox(height: 8),
-                      Text(_lastExportPath!),
-                    ],
-                  ),
-                ),
-              ),
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'About Export Formats',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      SizedBox(height: 16),
-                      ListTile(
-                        leading: Icon(Icons.description),
-                        title: Text('CSV Format'),
-                        subtitle: Text('Simple, widely compatible format. Best for importing into other applications.'),
-                      ),
-                      ListTile(
-                        leading: Icon(Icons.table_chart),
-                        title: Text('Excel Format'),
-                        subtitle: Text('Rich formatting with headers and column sizing. Best for viewing and analysis.'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+              Text('Last exported to: $_lastExportPath'),
           ],
         ),
       ),
