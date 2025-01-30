@@ -22,7 +22,7 @@ void main() async {
       MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          brightness: Brightness.dark,
+          brightness: Brightness.light,
           primarySwatch: Colors.blue,
           useMaterial3: true,
         ),
