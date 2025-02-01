@@ -237,23 +237,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     );
                   },
                 ),
-                ListTile(
-                  title: Text('Export Database'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ExportDatabasePage(database: widget.database),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.upload_file),
-                  title: Text('Export Database'),
-                  subtitle: Text('Export as CSV or Excel file'),
-                  onTap: _showExportDialog,
-                ),
               ],
             ),
           ),
@@ -272,7 +255,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ListTile(
                   leading: Icon(Icons.info),
                   title: Text('Version'),
-                  subtitle: Text('1.0.0'),
+                  subtitle: Text(packageInfo.version),
                 ),
               ],
             ),
