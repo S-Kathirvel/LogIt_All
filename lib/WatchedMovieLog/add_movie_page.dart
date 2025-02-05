@@ -20,10 +20,16 @@ class _AddMoviePageState extends State<AddMoviePage> {
     'Drama', 'Family', 'Fantasy', 'Film-Noir', 'History', 'Horror', 'Musical', 
     'Mystery', 'Romance', 'Sci-Fi', 'Sport', 'Thriller', 'War', 'Western'
   ];
-  List<bool> selectedGenres = List<bool>.filled(genres.length, false);
+  List<bool> selectedGenres = [];
   String customGenre = '';
   double rating = 5.0;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    selectedGenres = List<bool>.filled(genres.length, false);
+  }
 
   @override
   void dispose() {

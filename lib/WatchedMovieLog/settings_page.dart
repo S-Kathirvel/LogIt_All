@@ -4,9 +4,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'database.dart';
 import 'edit_database_page.dart';
-import 'export_database_page.dart'; // Add this line
+import 'export_database_page.dart';
+
+late PackageInfo packageInfo;
 
 class SettingsPage extends StatefulWidget {
   final MovieDatabase database;
@@ -163,104 +166,117 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _getPackageInfo();
+  }
+
+  Future<void> _getPackageInfo() async {
+    packageInfo = await PackageInfo.fromPlatform();
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Settings'),
-        actions: [
-          if (_isExporting)
-            Padding(
-              padding: EdgeInsets.only(right: 16.0),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-        ],
-      ),
-      body: ListView(
-        children: [
-          Card(
-            margin: EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Appearance',
-                    style: Theme.of(context).textTheme.titleMedium,
+    return MaterialApp(
+      theme: _isDarkMode ? ThemeData.dark() : ThemeData.light(),
+      home: Scaffold(
+        appBar: AppBar(
+          title: Text('Settings'),
+          actions: [
+            if (_isExporting)
+              Padding(
+                padding: EdgeInsets.only(right: 16.0),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        ),
+        body: ListView(
+          children: [
+            Card(
+              margin: EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Appearance',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
-                ),
-                SwitchListTile(
-                  title: Text('Dark Mode'),
-                  subtitle: Text('Toggle dark theme'),
-                  value: _isDarkMode,
-                  onChanged: (value) {
-                    setState(() => _isDarkMode = value);
-                    // TODO: Implement theme change using provider or other state management
-                  },
-                ),
-              ],
-            ),
-          ),
-          Card(
-            margin: EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Database',
-                    style: Theme.of(context).textTheme.titleMedium,
+                  SwitchListTile(
+                    title: Text('Dark Mode'),
+                    subtitle: Text('Toggle dark theme'),
+                    value: _isDarkMode,
+                    onChanged: (value) {
+                      setState(() => _isDarkMode = value);
+                    },
                   ),
-                ),
-                ListTile(
-                  leading: Icon(Icons.edit),
-                  title: Text('Edit Database'),
-                  subtitle: Text('Modify or delete movie entries'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditDatabasePage(database: widget.database),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: Text('Export Database'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ExportDatabasePage(database: widget.database),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Card(
-            margin: EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'About',
-                    style: Theme.of(context).textTheme.titleMedium,
+            Card(
+              margin: EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Database',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
-                ),
-                ListTile(
-                  leading: Icon(Icons.info),
-                  title: Text('Version'),
-                  subtitle: Text(packageInfo.version),
-                ),
-              ],
+                  ListTile(
+                    leading: Icon(Icons.edit),
+                    title: Text('Edit Database'),
+                    subtitle: Text('Modify or delete movie entries'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditDatabasePage(database: widget.database),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    title: Text('Export Database'),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ExportDatabasePage(database: widget.database),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Card(
+              margin: EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'About',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
+                  ListTile(
+                    leading: Icon(Icons.info),
+                    title: Text('Version'),
+                    subtitle: Text(packageInfo?.version ?? ''),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
