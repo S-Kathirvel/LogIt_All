@@ -1,283 +1,98 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:csv/csv.dart';
-import 'package:excel/excel.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'database.dart';
 import 'edit_database_page.dart';
 import 'export_database_page.dart';
 
-late PackageInfo packageInfo;
-
 class SettingsPage extends StatefulWidget {
   final MovieDatabase database;
 
-  SettingsPage({required this.database});
+  const SettingsPage({
+    Key? key,
+    required this.database,
+  }) : super(key: key);
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isDarkMode = false;
-  bool _isExporting = false;
-
-  Future<void> _exportToFile(String format) async {
-    setState(() => _isExporting = true);
-
-    try {
-      // Request storage permission
-      var status = await Permission.storage.request();
-      if (!status.isGranted) {
-        throw Exception('Storage permission denied');
-      }
-
-      // Get movies from database
-      final movies = await widget.database.getAllMovies();
-      if (movies.isEmpty) {
-        throw Exception('No movies to export');
-      }
-
-      // Get download directory
-      final directory = await getExternalStorageDirectory();
-      if (directory == null) {
-        throw Exception('Could not access storage');
-      }
-
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final fileName = 'watched_movies_$timestamp.$format';
-      final filePath = '${directory.path}/$fileName';
-
-      if (format == 'csv') {
-        await _exportToCsv(movies, filePath);
-      } else {
-        await _exportToExcel(movies, filePath);
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully exported to $filePath'),
-            duration: Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'OPEN',
-              onPressed: () {
-                // Open file explorer to the exported file
-              },
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isExporting = false);
-      }
-    }
-  }
-
-  Future<void> _exportToCsv(List<Map<String, dynamic>> movies, String filePath) async {
-    final csvData = [
-      ['Name', 'Year', 'Genre', 'Rating', 'Date Added'], // Header
-      ...movies.map((movie) => [
-        movie['name'],
-        movie['year'],
-        movie['genre'],
-        movie['rating'],
-        movie['date_of_entry'],
-      ]),
-    ];
-
-    final csvString = ListToCsvConverter().convert(csvData);
-    final file = File(filePath);
-    await file.writeAsString(csvString);
-  }
-
-  Future<void> _exportToExcel(List<Map<String, dynamic>> movies, String filePath) async {
-    final excel = Excel.createExcel();
-    final sheet = excel['Movies'];
-
-    final headers = ['Name', 'Year', 'Genre', 'Rating', 'Date Added'].map((e) => TextCellValue(e)).toList();
-    sheet.appendRow(headers);
-
-    // Add data rows
-    for (var movie in movies) {
-      final row = [
-        TextCellValue(movie['name']),
-        TextCellValue(movie['year'].toString()),
-        TextCellValue(movie['genre']),
-        TextCellValue(movie['rating'].toString()),
-        TextCellValue(movie['date_of_entry'] ?? ''),
-      ];
-      sheet.appendRow(row);
-    }
-
-    // Set column widths
-    for (var i = 0; i < headers.length; i++) {
-      sheet.setColumnWidth(i, 15.0);
-    }
-
-    final file = File(filePath);
-    await file.writeAsBytes(excel.encode()!);
-  }
-
-  void _showExportDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Export Database'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Choose export format:'),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.description),
-                  label: Text('CSV'),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _exportToFile('csv');
-                  },
-                ),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.table_chart),
-                  label: Text('Excel'),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _exportToFile('xlsx');
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  late PackageInfo packageInfo;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _getPackageInfo();
+    _loadPackageInfo();
   }
 
-  Future<void> _getPackageInfo() async {
+  Future<void> _loadPackageInfo() async {
     packageInfo = await PackageInfo.fromPlatform();
-    setState(() {});
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: _isDarkMode ? ThemeData.dark() : ThemeData.light(),
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text('Settings'),
-          actions: [
-            if (_isExporting)
-              Padding(
-                padding: EdgeInsets.only(right: 16.0),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-          ],
-        ),
-        body: ListView(
-          children: [
-            Card(
-              margin: EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'Appearance',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  SwitchListTile(
-                    title: Text('Dark Mode'),
-                    subtitle: Text('Toggle dark theme'),
-                    value: _isDarkMode,
-                    onChanged: (value) {
-                      setState(() => _isDarkMode = value);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Card(
-              margin: EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'Database',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.edit),
-                    title: Text('Edit Database'),
-                    subtitle: Text('Modify or delete movie entries'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditDatabasePage(database: widget.database),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    title: Text('Export Database'),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ExportDatabasePage(database: widget.database),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Card(
-              margin: EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'About',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                  ),
-                  ListTile(
-                    leading: Icon(Icons.info),
-                    title: Text('Version'),
-                    subtitle: Text(packageInfo?.version ?? ''),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: ListTile(
+                    title: const Text('Edit Database'),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditDatabasePage(
+                            database: widget.database,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: ListTile(
+                    title: const Text('Export Database'),
+                    trailing: const Icon(Icons.arrow_forward_ios),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ExportDatabasePage(
+                            database: widget.database,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: ListTile(
+                    title: const Text('App Version'),
+                    subtitle: Text(packageInfo.version),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: ListTile(
+                    title: const Text('Build Number'),
+                    subtitle: Text(packageInfo.buildNumber),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

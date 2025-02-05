@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'database.dart';
+import 'settings_page.dart';
 
 class AddMoviePage extends StatefulWidget {
   final MovieDatabase database;
 
-  AddMoviePage({required this.database});
+  const AddMoviePage({
+    Key? key,
+    required this.database,
+  }) : super(key: key);
 
   @override
   _AddMoviePageState createState() => _AddMoviePageState();
@@ -15,21 +19,16 @@ class _AddMoviePageState extends State<AddMoviePage> {
   final _nameController = TextEditingController();
   final _yearController = TextEditingController();
   final _customGenreController = TextEditingController();
-  List<String> genres = [
-    'Action', 'Adventure', 'Animation', 'Biography', 'Comedy', 'Crime', 'Documentary', 
-    'Drama', 'Family', 'Fantasy', 'Film-Noir', 'History', 'Horror', 'Musical', 
-    'Mystery', 'Romance', 'Sci-Fi', 'Sport', 'Thriller', 'War', 'Western'
-  ];
-  List<bool> selectedGenres = [];
-  String customGenre = '';
-  double rating = 5.0;
+  double _rating = 0;
+  List<String> _selectedGenres = [];
+  bool _isCustomGenre = false;
   bool _isSaving = false;
 
-  @override
-  void initState() {
-    super.initState();
-    selectedGenres = List<bool>.filled(genres.length, false);
-  }
+  static const List<String> predefinedGenres = [
+    "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", 
+    "Drama", "Family", "Fantasy", "Film-Noir", "History", "Horror", "Musical", 
+    "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western",
+  ];
 
   @override
   void dispose() {
@@ -47,22 +46,21 @@ class _AddMoviePageState extends State<AddMoviePage> {
     try {
       final movie = {
         'name': _nameController.text,
-        'year': int.parse(_yearController.text),
-        'genre': selectedGenres.asMap().entries.where((entry) => entry.value).map((entry) => genres[entry.key]).toList().join(', ') + (customGenre.isNotEmpty ? ', $customGenre' : ''),
-        'rating': rating,
+        'year': _yearController.text,
+        'genre': _selectedGenres.join(', '),
+        'rating': _rating,
         'date_of_entry': DateTime.now().toIso8601String(),
       };
 
       await widget.database.addMovie(movie);
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Movie added successfully!'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Pass true to indicate success
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -82,120 +80,85 @@ class _AddMoviePageState extends State<AddMoviePage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (_isSaving) return false;
-        Navigator.pop(context, false); // Pass false to indicate no changes
-        return false;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('Add New Movie'),
-          leading: _isSaving
-              ? null
-              : IconButton(
-                  icon: Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context, false),
-                ),
-        ),
-        body: Stack(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add Movie'),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Form(
-              key: _formKey,
-              child: ListView(
-                padding: EdgeInsets.all(16.0),
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: InputDecoration(
-                      labelText: 'Movie Name',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the movie name';
-                      }
-                      return null;
-                    },
-                    enabled: !_isSaving,
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    controller: _yearController,
-                    decoration: InputDecoration(
-                      labelText: 'Release Year',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the release year';
-                      }
-                      final year = int.tryParse(value);
-                      if (year == null || year < 1888 || year > DateTime.now().year) {
-                        return 'Please enter a valid year';
-                      }
-                      return null;
-                    },
-                    enabled: !_isSaving,
-                  ),
-                  SizedBox(height: 16),
-                  Column(
-                    children: [
-                      ...genres.asMap().entries.map((entry) {
-                        int index = entry.key;
-                        String genre = entry.value;
-                        return CheckboxListTile(
-                          title: Text(genre),
-                          value: selectedGenres[index],
-                          onChanged: (bool? value) {
-                            setState(() {
-                              selectedGenres[index] = value!;
-                            });
-                          },
-                        );
-                      }).toList(),
-                      TextField(
-                        decoration: InputDecoration(labelText: 'Custom Genre'),
-                        onChanged: (value) {
-                          customGenre = value;
-                        },
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Rating: ${rating.round().toString()}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Slider(
-                    value: rating,
-                    min: 0,
-                    max: 10,
-                    divisions: 10,
-                    label: rating.round().toString(),
-                    onChanged: _isSaving ? null : (value) {
-                      setState(() => rating = value);
-                    },
-                  ),
-                  SizedBox(height: 32),
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _saveMovie,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Text(_isSaving ? 'Saving...' : 'Save Movie'),
-                    ),
-                  ),
-                ],
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Movie Name',
+                border: OutlineInputBorder(),
               ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a movie name';
+                }
+                return null;
+              },
+              enabled: !_isSaving,
             ),
-            if (_isSaving)
-              Container(
-                color: Colors.black54,
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _yearController,
+              decoration: const InputDecoration(
+                labelText: 'Year',
+                border: OutlineInputBorder(),
               ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter the year';
+                }
+                return null;
+              },
+              enabled: !_isSaving,
+            ),
+            const SizedBox(height: 16),
+            Text('Select Genres:'),
+            ...predefinedGenres.map((genre) {
+              return CheckboxListTile(
+                title: Text(genre),
+                value: _selectedGenres.contains(genre),
+                onChanged: (bool? selected) {
+                  setState(() {
+                    if (selected == true) {
+                      _selectedGenres.add(genre);
+                    } else {
+                      _selectedGenres.remove(genre);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+            const SizedBox(height: 16),
+            Text(
+              'Rating: ${_rating.toStringAsFixed(1)}',
+              textAlign: TextAlign.center,
+            ),
+            Slider(
+              value: _rating,
+              min: 0,
+              max: 10,
+              divisions: 20,
+              label: _rating.toStringAsFixed(1),
+              onChanged: _isSaving ? null : (value) {
+                setState(() {
+                  _rating = value;
+                });
+              },
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _isSaving ? null : _saveMovie,
+              child: _isSaving
+                  ? const CircularProgressIndicator()
+                  : const Text('Save Movie'),
+            ),
           ],
         ),
       ),

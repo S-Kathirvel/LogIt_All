@@ -2,68 +2,173 @@ import 'package:flutter/material.dart';
 import 'database.dart';
 
 class EditMoviePage extends StatefulWidget {
-  final Map<String, dynamic> movie;
   final MovieDatabase database;
+  final Map<String, dynamic> movie;
 
-  EditMoviePage({required this.movie, required this.database});
+  const EditMoviePage({
+    Key? key,
+    required this.database,
+    required this.movie,
+  }) : super(key: key);
 
   @override
   _EditMoviePageState createState() => _EditMoviePageState();
 }
 
 class _EditMoviePageState extends State<EditMoviePage> {
+  final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _yearController;
-  late List<String> _selectedGenres;
+  late TextEditingController _customGenreController;
+  late double _rating;
+  List<String> _selectedGenres = [];
+  bool _isCustomGenre = false;
+  bool _isSaving = false;
+
+  static const List<String> predefinedGenres = [
+    "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", 
+    "Drama", "Family", "Fantasy", "Film-Noir", "History", "Horror", "Musical", 
+    "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western",
+  ];
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.movie['name']);
-    _yearController = TextEditingController(text: widget.movie['year'].toString());
-    _selectedGenres = widget.movie['genre'].split(', ');
+    _yearController = TextEditingController(text: widget.movie['year']);
+    _rating = widget.movie['rating']?.toDouble() ?? 0.0;
+    final currentGenre = widget.movie['genre'] as String?;
+    _selectedGenres = currentGenre != null ? currentGenre.split(', ') : [];
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _yearController.dispose();
+    _customGenreController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveMovie() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      await widget.database.updateMovie(
+        widget.movie['id'],
+        {
+          'name': _nameController.text,
+          'year': _yearController.text,
+          'genre': _selectedGenres.join(', '),
+          'rating': _rating,
+        },
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Movie updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update movie: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Movie'),
+        title: const Text('Edit Movie'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            TextField(
+            TextFormField(
               controller: _nameController,
-              decoration: InputDecoration(labelText: 'Movie Name'),
-            ),
-            TextField(
-              controller: _yearController,
-              decoration: InputDecoration(labelText: 'Release Year'),
-              keyboardType: TextInputType.number,
-            ),
-            // Add more fields for genre, rating, etc.
-            ElevatedButton(
-              onPressed: () async {
-                final movie = {
-                  'id': widget.movie['id'],
-                  'name': _nameController.text,
-                  'year': int.parse(_yearController.text),
-                  'genre': _selectedGenres.join(', '),
-                  // Add other fields here
-                };
-                await widget.database.updateMovie(movie);
-                Navigator.pop(context, movie);
+              decoration: const InputDecoration(
+                labelText: 'Movie Name',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a movie name';
+                }
+                return null;
               },
-              child: Text('Save Changes'),
+              enabled: !_isSaving,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _yearController,
+              decoration: const InputDecoration(
+                labelText: 'Year',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter the year';
+                }
+                return null;
+              },
+              enabled: !_isSaving,
+            ),
+            const SizedBox(height: 16),
+            Text('Select Genres:'),
+            ...predefinedGenres.map((genre) {
+              return CheckboxListTile(
+                title: Text(genre),
+                value: _selectedGenres.contains(genre),
+                onChanged: (bool? selected) {
+                  setState(() {
+                    if (selected == true) {
+                      _selectedGenres.add(genre);
+                    } else {
+                      _selectedGenres.remove(genre);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+            const SizedBox(height: 16),
+            Text(
+              'Rating: ${_rating.toStringAsFixed(1)}',
+              textAlign: TextAlign.center,
+            ),
+            Slider(
+              value: _rating,
+              min: 0,
+              max: 10,
+              divisions: 20,
+              label: _rating.toStringAsFixed(1),
+              onChanged: _isSaving ? null : (value) {
+                setState(() {
+                  _rating = value;
+                });
+              },
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: _isSaving ? null : _saveMovie,
+              child: _isSaving
+                  ? const CircularProgressIndicator()
+                  : const Text('Save Changes'),
             ),
           ],
         ),

@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
 import 'database.dart';
 import 'add_movie_page.dart';
-import 'settings_page.dart'; // Assuming SettingsPage is defined in settings_page.dart
+import 'edit_movie_page.dart';
+import 'settings_page.dart';
 
 class ShowMoviesPage extends StatefulWidget {
   final MovieDatabase database;
 
-  ShowMoviesPage({required this.database});
+  const ShowMoviesPage({
+    Key? key,
+    required this.database,
+  }) : super(key: key);
 
   @override
   _ShowMoviesPageState createState() => _ShowMoviesPageState();
 }
 
 class _ShowMoviesPageState extends State<ShowMoviesPage> {
-  late Future<List<Map<String, dynamic>>> _moviesFuture;
-  bool _isLoading = false;
+  List<Map<String, dynamic>> _movies = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -23,152 +27,96 @@ class _ShowMoviesPageState extends State<ShowMoviesPage> {
   }
 
   Future<void> _refreshMovies() async {
+    final movies = await widget.database.getMovies();
     setState(() {
-      _isLoading = true;
-      _moviesFuture = widget.database.getAllMovies();
+      _movies = movies;
+      _isLoading = false;
     });
-
-    try {
-      await _moviesFuture;
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading movies: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
   }
 
-  Future<void> _navigateToAddMovie() async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddMoviePage(database: widget.database),
-      ),
-    );
-
-    if (result == true) {
-      _refreshMovies();
-    }
+  Future<void> _deleteMovie(int id) async {
+    await widget.database.deleteMovie(id);
+    await _refreshMovies();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Watched Movies'),
+        title: const Text('Watched Movies'),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _refreshMovies,
-          ),
-          IconButton(
-            icon: Icon(Icons.settings),
+            icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SettingsPage(database: widget.database), 
+                  builder: (context) => SettingsPage(
+                    database: widget.database,
+                  ),
                 ),
               );
             },
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          FutureBuilder<List<Map<String, dynamic>>>(
-            future: _moviesFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting && !_isLoading) {
-                return Center(child: CircularProgressIndicator());
-              }
-
-              if (snapshot.hasError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.error_outline, size: 48, color: Colors.red),
-                      SizedBox(height: 16),
-                      Text(
-                        'Error loading movies',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: _refreshMovies,
-                        child: Text('Try Again'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              final movies = snapshot.data ?? [];
-
-              if (movies.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.movie_outlined, size: 48),
-                      SizedBox(height: 16),
-                      Text(
-                        'No movies added yet',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: _navigateToAddMovie,
-                        child: Text('Add Your First Movie'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: _refreshMovies,
-                child: ListView.builder(
-                  itemCount: movies.length,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _movies.isEmpty
+              ? const Center(child: Text('No movies added yet'))
+              : ListView.builder(
+                  itemCount: _movies.length,
                   itemBuilder: (context, index) {
-                    final movie = movies[index];
-                    return Card(
-                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        title: Text(movie['name'] ?? ''),
-                        subtitle: Text(
-                          '${movie['year']} • ${movie['genre']}\nRating: ${movie['rating'].toStringAsFixed(1)}/10.0',
+                    final movie = _movies[index];
+                    return Dismissible(
+                      key: Key(movie['id'].toString()),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 16),
+                        child: const Icon(
+                          Icons.delete,
+                          color: Colors.white,
                         ),
-                        isThreeLine: true,
+                      ),
+                      onDismissed: (direction) {
+                        _deleteMovie(movie['id']);
+                      },
+                      child: ListTile(
+                        title: Text(movie['name']),
+                        subtitle: Text('Genre: ${movie['genre']} • Rating: ${movie['rating'].toStringAsFixed(1)}'),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditMoviePage(
+                                database: widget.database,
+                                movie: movie,
+                              ),
+                            ),
+                          );
+                          _refreshMovies();
+                        },
                       ),
                     );
                   },
                 ),
-              );
-            },
-          ),
-          if (_isLoading)
-            Container(
-              color: Colors.black54,
-              child: Center(
-                child: CircularProgressIndicator(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddMoviePage(
+                database: widget.database,
               ),
             ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _isLoading ? null : _navigateToAddMovie,
-        child: Icon(Icons.add),
-        tooltip: 'Add Movie',
+          );
+          if (result == true) {
+            _refreshMovies();
+          }
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }

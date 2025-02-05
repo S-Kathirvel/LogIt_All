@@ -58,6 +58,19 @@ class MovieDatabase {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getMovies() async {
+    try {
+      print('Getting all movies...');
+      final db = await database;
+      final result = await db.query('watched_movies', orderBy: 'date_of_entry DESC');
+      print('Retrieved ${result.length} movies from database');
+      return result;
+    } catch (e) {
+      print('Error getting movies: $e');
+      return [];
+    }
+  }
+
   Future<int> addMovie(Map<String, dynamic> movie) async {
     try {
       print('Adding movie: ${movie['name']}');
@@ -68,19 +81,6 @@ class MovieDatabase {
     } catch (e) {
       print('Error adding movie: $e');
       rethrow;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getAllMovies() async {
-    try {
-      print('Getting all movies...');
-      final db = await database;
-      final result = await db.query('watched_movies', orderBy: 'date_of_entry DESC');
-      print('Retrieved ${result.length} movies from database');
-      return result;
-    } catch (e) {
-      print('Error getting movies: $e');
-      return [];
     }
   }
 
