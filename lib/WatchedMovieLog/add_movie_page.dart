@@ -14,15 +14,22 @@ class _AddMoviePageState extends State<AddMoviePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _yearController = TextEditingController();
-  final _genreController = TextEditingController();
-  double _rating = 3.0;
+  final _customGenreController = TextEditingController();
+  List<String> genres = [
+    'Action', 'Adventure', 'Animation', 'Biography', 'Comedy', 'Crime', 'Documentary', 
+    'Drama', 'Family', 'Fantasy', 'Film-Noir', 'History', 'Horror', 'Musical', 
+    'Mystery', 'Romance', 'Sci-Fi', 'Sport', 'Thriller', 'War', 'Western'
+  ];
+  List<bool> selectedGenres = List<bool>.filled(genres.length, false);
+  String customGenre = '';
+  double rating = 5.0;
   bool _isSaving = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     _yearController.dispose();
-    _genreController.dispose();
+    _customGenreController.dispose();
     super.dispose();
   }
 
@@ -35,8 +42,8 @@ class _AddMoviePageState extends State<AddMoviePage> {
       final movie = {
         'name': _nameController.text,
         'year': int.parse(_yearController.text),
-        'genre': _genreController.text,
-        'rating': _rating,
+        'genre': selectedGenres.asMap().entries.where((entry) => entry.value).map((entry) => genres[entry.key]).toList().join(', ') + (customGenre.isNotEmpty ? ', $customGenre' : ''),
+        'rating': rating,
         'date_of_entry': DateTime.now().toIso8601String(),
       };
 
@@ -127,33 +134,42 @@ class _AddMoviePageState extends State<AddMoviePage> {
                     enabled: !_isSaving,
                   ),
                   SizedBox(height: 16),
-                  TextFormField(
-                    controller: _genreController,
-                    decoration: InputDecoration(
-                      labelText: 'Genre',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter the genre';
-                      }
-                      return null;
-                    },
-                    enabled: !_isSaving,
+                  Column(
+                    children: [
+                      ...genres.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        String genre = entry.value;
+                        return CheckboxListTile(
+                          title: Text(genre),
+                          value: selectedGenres[index],
+                          onChanged: (bool? value) {
+                            setState(() {
+                              selectedGenres[index] = value!;
+                            });
+                          },
+                        );
+                      }).toList(),
+                      TextField(
+                        decoration: InputDecoration(labelText: 'Custom Genre'),
+                        onChanged: (value) {
+                          customGenre = value;
+                        },
+                      ),
+                    ],
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Rating: ${_rating.toStringAsFixed(1)}',
+                    'Rating: ${rating.round().toString()}',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Slider(
-                    value: _rating,
+                    value: rating,
                     min: 0,
-                    max: 5,
+                    max: 10,
                     divisions: 10,
-                    label: _rating.toStringAsFixed(1),
+                    label: rating.round().toString(),
                     onChanged: _isSaving ? null : (value) {
-                      setState(() => _rating = value);
+                      setState(() => rating = value);
                     },
                   ),
                   SizedBox(height: 32),

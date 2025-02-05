@@ -146,7 +146,7 @@ class _ShowMoviesPageState extends State<ShowMoviesPage> {
                       child: ListTile(
                         title: Text(movie['name'] ?? ''),
                         subtitle: Text(
-                          '${movie['year']} • ${movie['genre']}\nRating: ${movie['rating'].toStringAsFixed(1)}/5.0',
+                          '${movie['year']} • ${movie['genre']}\nRating: ${movie['rating'].toStringAsFixed(1)}/10.0',
                         ),
                         isThreeLine: true,
                       ),
