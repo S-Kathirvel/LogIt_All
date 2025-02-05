@@ -2,7 +2,7 @@ name: LogItAll
 description: "A Personal Utility app for Myself."
 publish_to: 'none'
 
-version: 1.0.1+1 
+version: 1.0.3+1
 
 environment:
   sdk: '>=3.2.3 <4.0.0'  # Updated to the latest stable Dart SDK constraint
@@ -19,6 +19,7 @@ dependencies:
   sqflite: ^2.3.0
   intl: ^0.19.0
   package_info_plus: ^4.2.0
+  google_fonts: 6.2.1
 
 dev_dependencies:
   flutter_test:
@@ -47,4 +48,9 @@ dependency_overrides:
   string_scanner: ^1.4.1
   term_glyph: ^1.2.2
   test_api: ^0.7.4
+  shared_preferences: 2.5.1
+  shared_preferences_android: 2.4.4
+  package_info_plus: 8.2.0
+  package_info_plus_platform_interface: 3.1.0
+  # google_fonts: 6.2.1
   vm_service: ^15.0.0
